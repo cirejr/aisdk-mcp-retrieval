@@ -1,5 +1,5 @@
 import { ollama } from "ai-sdk-ollama";
-import { streamText, UIMessage, convertToModelMessages } from "ai";
+import { streamText, UIMessage, convertToModelMessages, stepCountIs } from "ai";
 import { createNeonMCPClient } from "@/lib/mcp";
 
 export const maxDuration = 60;
@@ -17,6 +17,7 @@ export async function POST(req: Request) {
     model: ollama("gemma3:4b"),
     messages: await convertToModelMessages(messages),
     tools,
+    stopWhen: stepCountIs(5), // Allow multi-step tool calls
     onFinish: async () => {
       // Always close MCP client when done
       await mcpClient.close();

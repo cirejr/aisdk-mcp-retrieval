@@ -16,15 +16,18 @@
 
 
 
-### TASK‑005: NL → Data retrieval
-Acceptance:
-- NL input retrieves real DB data
+
 
 
 ---
 
 
 ## IN PROGRESS
+
+
+### TASK‑005: NL → Data retrieval
+Acceptance:
+- NL input retrieves real DB data
 
 
 
@@ -42,6 +45,10 @@ Acceptance:
 
 
 ## DONE
+
+### TASK‑005: NL → Data retrieval
+Acceptance:
+- NL input retrieves real DB data
 
 ### TASK‑004: Setup Neon MCP connection through ai-sdk
 Acceptance:
