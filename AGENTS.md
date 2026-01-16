@@ -18,6 +18,8 @@ The following skills are available to ALL agents (Cursor, Gemini, Copilot, Claud
   - *Trigger*: When configuring MCP clients, transports, or using MCP tools/resources.
 - **AI SDK Tool Calling**: `view_file .claude/skills/ai-sdk-tool-calling/SKILL.md`
   - *Trigger*: When defining tools with `zod` schemas or implementing multi-step agent loops.
+- **AI SDK Next.js App Router**: `view_file .claude/skills/ai-sdk-nextjs-app-router/SKILL.md`
+  - *Trigger*: When building chat UIs with Next.js App Router, using `useChat` or `streamText`.
 
 
 ## 🎯 Objective

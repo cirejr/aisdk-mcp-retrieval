@@ -10,10 +10,7 @@
 
 
 
-### TASK‑003: Integrate Vercel AI Elements
-Acceptance:
-- Chat UI renders
-- Messages stream correctly
+
 
 
 ### TASK‑004: Setup Neon MCP connection
@@ -41,7 +38,15 @@ Acceptance:
 
 
 
+
+
+
 ## DONE
+
+### TASK‑003: Integrate Vercel AI Elements
+Acceptance:
+- Chat UI renders
+- Messages stream correctly
 
 ### TASK‑002: Setup AI SDK + Ollama
 Acceptance:
