@@ -13,10 +13,7 @@
 
 
 
-### TASK‑004: Setup Neon MCP connection
-Acceptance:
-- MCP client configured
-- Test query works
+
 
 
 ### TASK‑005: NL → Data retrieval
@@ -41,7 +38,15 @@ Acceptance:
 
 
 
+
+
+
 ## DONE
+
+### TASK‑004: Setup Neon MCP connection through ai-sdk
+Acceptance:
+- MCP client configured
+- Test query works
 
 ### TASK‑003: Integrate Vercel AI Elements
 Acceptance:
