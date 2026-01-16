@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ai-elements": {
+      "command": "bunx",
+      "args": [
+        "mcp-remote",
+        "https://registry.ai-sdk.dev/api/mcp"
+      ]
+    }
+  }
+}
