@@ -1,0 +1,1 @@
+// Basic text generation script
