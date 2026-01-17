@@ -97,3 +97,10 @@ Acceptance:
 - Scripts directory with basic-text.ts and object-gen.ts
 - References with main/ and helpers/ subdirectories
 - Generic "AI Agent" language used
+
+
+### TASK‑009: Complete NL → Data retrieval with UI
+Acceptance:
+- Chat UI properly displays DB query results
+- API route processes requests end-to-end
+- User sees structured data responses
