@@ -3,6 +3,8 @@
 
 ## BACKLOG
 
+
+
 ### TASK‑010: Create AI SDK Usage Prompt Skill
 Acceptance:
 - Skill created in `.claude/skills/ai-sdk-usage-prompt`
@@ -72,4 +74,12 @@ Acceptance:
 - Skill created in `.claude/skills/ai-sdk-usage-prompt`
 - Covers text, system, and message prompts
 - Includes multi-modal content and provider options
+- Generic "AI Agent" language used
+
+
+### TASK‑011: Create AI SDK Tool Calling Usage Skill
+Acceptance:
+- Skill created in `.claude/skills/ai-sdk-tool-calling-usage`
+- Covers tools, schemas, and toolsets
+- Includes tool packages and MCP tools
 - Generic "AI Agent" language used
