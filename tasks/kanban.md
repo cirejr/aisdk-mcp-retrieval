@@ -3,7 +3,12 @@
 
 ## BACKLOG
 
-
+### TASK‑012: Create AI SDK UI Skill
+Acceptance:
+- Skill created in `.claude/skills/ai-sdk-ui/` with specified structure
+- Includes SKILL.md, README.md, and references/ directory
+- Covers UI hooks, streaming, and patterns
+- Generic "AI Agent" language used
 
 ### TASK‑010: Create AI SDK Usage Prompt Skill
 Acceptance:
@@ -82,4 +87,11 @@ Acceptance:
 - Skill created in `.claude/skills/ai-sdk-tool-calling-usage`
 - Covers tools, schemas, and toolsets
 - Includes tool packages and MCP tools
+- Generic "AI Agent" language used
+
+### TASK‑012: Create AI SDK UI Skill
+Acceptance:
+- Skill created in `.claude/skills/ai-sdk-ui/` with specified structure
+- Includes SKILL.md, README.md, and references/ directory
+- Covers UI hooks, streaming, and patterns
 - Generic "AI Agent" language used
