@@ -1,502 +1,170 @@
-# createUIStreamMessageStreamResponse Function
+# createUIMessageStreamResponse()
 
-The `createUIStreamMessageStreamResponse` function creates a Response object from UI message streams, enabling compatibility with web standards and easy integration with existing API routes.
+## Purpose
 
-## Basic Usage
+`createUIMessageStreamResponse` wraps a **UI message stream** into a standard Web `Response` object.
+
+Use this when:
+
+* you are in a Web / Edge / Next.js Route Handler
+* you already have a `ReadableStream<UIMessageChunk>`
+* you want proper headers, status, and SSE handling
+
+This is the **Web-standard counterpart** to `pipeUIMessageStreamToResponse`.
+
+---
+
+## Mental Model
+
+* Input: `ReadableStream<UIMessageChunk>`
+* Output: `Response`
+
+Think of it as:
+
+> “Finalize my UI stream into a real HTTP response.”
+
+---
+
+## Typical Usage
 
 ```ts
-import { createUIStreamMessageStreamResponse } from '@ai-sdk/react';
-
-export async function POST(req: Request) {
-  const { messages } = await req.json();
-
-  const streamResponse = createUIStreamMessageStreamResponse({
-    messages,
-    onFinish: (message) => {
-      console.log('Stream completed:', message);
-    },
-  });
-
-  return streamResponse;
-}
-```
-
-## Configuration Options
-
-### Stream Response Setup
-
-```ts
-const response = createUIStreamMessageStreamResponse({
-  messages: conversationMessages,
-  model: openai('gpt-4'),
-  tools: availableTools,
-  system: 'You are a helpful assistant.',
-  onFinish: (message) => {
-    // Log completion
-    console.log('Message completed:', message.id);
-  },
-  onError: (error) => {
-    // Handle errors
-    console.error('Stream error:', error);
-  },
-  headers: {
-    'Custom-Header': 'value',
-  },
+const response = createUIMessageStreamResponse({
+  stream,
   status: 200,
-});
-```
-
-### Advanced Configuration
-
-```ts
-const response = createUIStreamMessageStreamResponse({
-  messages,
-  model: yourModel,
-  tools: availableTools,
-  system: 'System instructions',
-  
-  // Stream options
-  onFinish: (message) => {
-    // Save to database
-    saveMessage(message);
-  },
-  onError: (error) => {
-    // Track errors
-    trackError(error);
-  },
-  onStart: () => {
-    // Mark request start
-    markRequestStart();
-  },
-  
-  // Response options
   headers: {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*',
+    'Cache-Control': 'no-store',
   },
-  status: 200,
-  statusText: 'OK',
-  
-  // Stream configuration
-  streamProtocol: 'text',
-  chunkSize: 1024,
-  bufferTimeout: 100,
 });
 ```
 
-## Integration Examples
+---
 
-### API Route Implementation
+## Parameters
 
-```ts
-import { createUIStreamMessageStreamResponse } from '@ai-sdk/react';
-import { streamText } from 'ai';
+### `stream`
 
-export async function POST(req: Request) {
-  const { messages, model, tools } = await req.json();
+* Type: `ReadableStream<UIMessageChunk>`
+* Required
 
-  try {
-    // Create streaming response
-    const response = createUIStreamMessageStreamResponse({
-      messages,
-      model: getModel(model),
-      tools: tools ? parseTools(tools) : undefined,
-      system: 'You are a helpful AI assistant.',
-      
-      onFinish: async (message) => {
-        // Log completion for analytics
-        await logRequest({
-          type: 'completion',
-          messageId: message.id,
-          timestamp: new Date(),
-          model: model,
-        });
-      },
-      
-      onError: async (error) => {
-        // Log errors for monitoring
-        await logError({
-          type: 'stream_error',
-          error: error.message,
-          timestamp: new Date(),
-        });
-      },
-      
-      // Custom headers for client
-      headers: {
-        'X-Model': model,
-        'X-Request-ID': generateRequestId(),
-      },
-    });
+Usually created via `createUIMessageStream()` or `streamText().toUIMessageStream()`.
 
-    return response;
-    
-  } catch (error) {
-    // Fallback response
-    return new Response(
-      JSON.stringify({ error: 'Stream initialization failed' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-}
-```
+---
 
-### Multi-Model Response
+### `status`
 
-```ts
-export async function POST(req: Request) {
-  const { messages, preferredModel } = await req.json();
-  
-  // Model selection logic
-  const selectedModel = selectModel(preferredModel, messages);
-  
-  const response = createUIStreamMessageStreamResponse({
-    messages,
-    model: selectedModel,
-    tools: getModelTools(selectedModel),
-    system: getModelSystemPrompt(selectedModel),
-    
-    onFinish: (message) => {
-      // Model-specific completion handling
-      handleModelCompletion(selectedModel, message);
-    },
-    
-    headers: {
-      'X-Selected-Model': selectedModel.name,
-      'X-Model-Capability': getModelCapabilities(selectedModel),
-    },
-  });
+* Type: `number`
+* Default: `200`
 
-  return response;
-}
-```
+HTTP status code.
 
-### Tool-Enhanced Response
+---
 
-```ts
-export async function POST(req: Request) {
-  const { messages, enableTools } = await req.json();
-  
-  const availableTools = enableTools ? [
-    {
-      name: 'web_search',
-      description: 'Search the web for current information',
-      inputSchema: z.object({
-        query: z.string(),
-        limit: z.number().default(5),
-      }),
-      execute: async ({ query, limit }) => {
-        return await performWebSearch(query, limit);
-      },
-    },
-    {
-      name: 'get_weather',
-      description: 'Get weather information',
-      inputSchema: z.object({
-        location: z.string(),
-        units: z.enum(['celsius', 'fahrenheit']),
-      }),
-      execute: async ({ location, units }) => {
-        return await getWeatherData(location, units);
-      },
-    },
-  ] : undefined;
+### `statusText`
 
-  const response = createUIStreamMessageStreamResponse({
-    messages,
-    model: openai('gpt-4'),
-    tools: availableTools,
-    system: enableTools 
-      ? 'You have access to web search and weather tools.'
-      : 'You are a helpful assistant.',
-      
-    onFinish: (message) => {
-      // Log tool usage
-      if (message.toolInvocations) {
-        message.toolInvocations.forEach(invocation => {
-          logToolUsage(invocation.toolName, invocation.args);
-        });
-      }
-    },
-    
-    onToolCall: (toolCall) => {
-      // Log tool attempts
-      logToolAttempt(toolCall.name, toolCall.args);
-    },
-    
-    headers: {
-      'X-Tools-Enabled': enableTools ? 'true' : 'false',
-      'X-Available-Tools': availableTools?.length || 0,
-    },
-  });
+* Type: `string`
 
-  return response;
-}
-```
+Optional HTTP status text.
 
-## Error Handling
+---
 
-### Robust Error Responses
+### `headers`
 
-```ts
-export async function POST(req: Request) {
-  try {
-    const { messages } = await req.json();
-    
-    const response = createUIStreamMessageStreamResponse({
-      messages,
-      model: openai('gpt-4'),
-      
-      onError: async (error) => {
-        // Classify error type
-        const errorType = classifyError(error);
-        
-        // Send error to monitoring
-        await sendErrorAlert({
-          type: errorType,
-          message: error.message,
-          stack: error.stack,
-          timestamp: new Date(),
-        });
-        
-        // Return appropriate error response
-        if (errorType === 'authentication') {
-          return new Response(
-            JSON.stringify({ error: 'Authentication failed' }),
-            { status: 401, headers: { 'Content-Type': 'application/json' } }
-          );
-        }
-        
-        if (errorType === 'rate_limit') {
-          return new Response(
-            JSON.stringify({ error: 'Rate limit exceeded' }),
-            { status: 429, headers: { 'Content-Type': 'application/json' } }
-          );
-        }
-        
-        // Default error
-        return new Response(
-          JSON.stringify({ error: 'Internal server error' }),
-          { status: 500, headers: { 'Content-Type': 'application/json' } }
-        );
-      },
-    });
+* Type: `Headers | Record<string, string>`
 
-    return response;
-    
-  } catch (error) {
-    // JSON parsing errors
-    return new Response(
-      JSON.stringify({ error: 'Invalid request format' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-}
-```
+Used for:
 
-### Fallback Responses
+* SSE headers
+* CORS
+* caching
+* auth propagation
 
-```ts
-export async function POST(req: Request) {
-  const { messages, useFallback } = await req.json();
-  
-  try {
-    const response = createUIStreamMessageStreamResponse({
-      messages,
-      model: openai('gpt-4'),
-      
-      onError: async (error) => {
-        if (useFallback) {
-          // Try fallback model
-          const fallbackResponse = createUIStreamMessageStreamResponse({
-            messages,
-            model: anthropic('claude-3-haiku'),
-            system: 'Primary model failed. Providing simplified response.',
-            
-            onFinish: (message) => {
-              // Log fallback usage
-              logFallbackUsage(error.message, message);
-            },
-          });
-          
-          return fallbackResponse;
-        }
-        
-        throw error;
-      },
-    });
+---
 
-    return response;
-    
-  } catch (error) {
-    // Last resort: static response
-    return new Response(
-      JSON.stringify({ 
-        error: 'All models unavailable. Please try again later.' 
-      }),
-      { status: 503, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-}
-```
+### `consumeSseStream`
 
-## Performance Optimization
+Optional hook to tap into the SSE stream:
 
-### Response Caching
+* stream is **teed**
+* does not affect the client
 
-```ts
-const responseCache = new Map();
+Useful for:
 
-export async function POST(req: Request) {
-  const { messages, model, enableCache } = await req.json();
-  
-  // Generate cache key
-  const cacheKey = generateCacheKey(messages, model);
-  
-  if (enableCache && responseCache.has(cacheKey)) {
-    const cachedResponse = responseCache.get(cacheKey);
-    return new Response(cachedResponse.body, {
-      status: 200,
-      headers: {
-        ...cachedResponse.headers,
-        'X-Cache': 'HIT',
-        'X-Cache-Key': cacheKey,
-      },
-    });
-  }
-  
-  const response = createUIStreamMessageStreamResponse({
-    messages,
-    model: getModel(model),
-    
-    onFinish: (message) => {
-      // Cache successful responses
-      if (enableCache && message.content) {
-        responseCache.set(cacheKey, {
-          body: message.content,
-          headers: response.headers,
-          timestamp: Date.now(),
-        });
-        
-        // Clean old cache entries
-        cleanCache();
-      }
-    },
-    
-    headers: {
-      'X-Cache': 'MISS',
-      'X-Cache-Key': cacheKey,
-    },
-  });
+* logging
+* analytics
+* mirroring to another consumer
 
-  return response;
-}
-```
+---
 
-### Response Compression
+## Returns
 
-```ts
-export async function POST(req: Request) {
-  const { messages, enableCompression } = await req.json();
-  
-  const response = createUIStreamMessageStreamResponse({
-    messages,
-    model: openai('gpt-4'),
-    
-    // Custom stream processing
-    processChunk: (chunk) => {
-      if (enableCompression) {
-        // Compress chunks for large responses
-        return compressChunk(chunk);
-      }
-      return chunk;
-    },
-    
-    headers: {
-      'Content-Encoding': enableCompression ? 'gzip' : 'identity',
-      'X-Compression': enableCompression ? 'enabled' : 'disabled',
-    },
-  });
+* `Response`
 
-  return response;
-}
-```
+A fully configured streaming HTTP response.
 
-## Testing
+---
 
-### Unit Testing
+## Common Use Cases
 
-```ts
-import { createUIStreamMessageStreamResponse } from '@ai-sdk/react';
+* Next.js Route Handlers (`app/api/*/route.ts`)
+* Edge Functions
+* Web-native runtimes (Deno, Bun)
 
-describe('createUIStreamMessageStreamResponse', () => {
-  it('should create a valid Response object', async () => {
-    const messages = [
-      { role: 'user', content: 'Hello' }
-    ];
-
-    const response = createUIStreamMessageStreamResponse({
-      messages,
-      model: mockModel,
-    });
-
-    expect(response).toBeInstanceOf(Response);
-    expect(response.status).toBe(200);
-    expect(response.headers.get('content-type')).toContain('text/event-stream');
-  });
-
-  it('should include custom headers', async () => {
-    const messages = [{ role: 'user', content: 'Hello' }];
-    const customHeaders = { 'X-Custom': 'value' };
-
-    const response = createUIStreamMessageStreamResponse({
-      messages,
-      model: mockModel,
-      headers: customHeaders,
-    });
-
-    expect(response.headers.get('X-Custom')).toBe('value');
-  });
-
-  it('should handle errors gracefully', async () => {
-    const messages = [{ role: 'user', content: 'Hello' }];
-    const onError = jest.fn();
-
-    // Mock model that throws error
-    const errorModel = {
-      ...mockModel,
-      doGenerate: jest.fn().mockRejectedValue(new Error('Model failed')),
-    };
-
-    const response = createUIStreamMessageStreamResponse({
-      messages,
-      model: errorModel,
-      onError,
-    });
-
-    // Verify error handling
-    expect(onError).toHaveBeenCalled();
-  });
-});
-```
+---
 
 ## Common Pitfalls
 
-1. **Memory Leaks**: Not properly closing response streams
-2. **Header Conflicts**: Setting conflicting headers
-3. **Error Propagation**: Not handling stream errors in responses
-4. **Caching Issues**: Incorrect cache key generation
-5. **Performance**: Not optimizing response headers
+* Using this in Node `http.ServerResponse` (wrong API)
+* Forgetting SSE headers when manually overriding
 
-## Best Practices
+---
 
-1. **Always include proper headers** for streaming responses
-2. **Implement error handling** with appropriate HTTP status codes
-3. **Use meaningful response headers** for debugging and monitoring
-4. **Consider response compression** for large streams
-5. **Implement response caching** for repeated requests
-6. **Monitor response performance** and optimize accordingly
-7. **Test error scenarios** with different failure modes
-8. **Use appropriate timeouts** to prevent hanging connections
+## When to Use Something Else
+
+| Environment         | Use                             |
+| ------------------- | ------------------------------- |
+| Node.js HTTP server | `pipeUIMessageStreamToResponse` |
+| UI stream creation  | `createUIMessageStream`         |
+| Stream consumption  | `readUIMessageStream`           |
+
+
+const existingMessages: UIMessage[] = [
+  /* ... */
+];
+
+const stream = createUIMessageStream({
+  async execute({ writer }) {
+    // Start a text message
+    // Note: The id must be consistent across text-start, text-delta, and text-end steps
+    // This allows the system to correctly identify they belong to the same text block
+    writer.write({
+      type: 'text-start',
+      id: 'example-text',
+    });
+
+    // Write a message chunk
+    writer.write({
+      type: 'text-delta',
+      id: 'example-text',
+      delta: 'Hello',
+    });
+
+    // End the text message
+    writer.write({
+      type: 'text-end',
+      id: 'example-text',
+    });
+
+    // Merge another stream from streamText
+    const result = streamText({
+      model: google("gemini-2.5-flash-image-preview"),
+      prompt: 'Write a haiku about AI',
+    });
+
+    writer.merge(result.toUIMessageStream());
+  },
+  onError: error => `Custom error: ${error.message}`,
+  originalMessages: existingMessages,
+  onFinish: ({ messages, isContinuation, responseMessage }) => {
+    console.log('Stream finished with messages:', messages);
+  },
+});
