@@ -3,52 +3,31 @@
 
 ## BACKLOG
 
+### TASK‑010: Create AI SDK Usage Prompt Skill
+Acceptance:
+- Skill created in `.claude/skills/ai-sdk-usage-prompt`
+- Covers text, system, and message prompts
+- Includes multi-modal content and provider options
+- Generic "AI Agent" language used
 
+### TASK‑009: Complete NL → Data retrieval with UI
+Acceptance:
+- Chat UI properly displays DB query results
+- API route processes requests end-to-end
+- User sees structured data responses
 
+---
 
-
-
-
-
-
-
-
-
-
-
-
-
+## IN PROGRESS
 
 ---
 
 
-## IN PROGRESS
-
-
-### TASK‑005: NL → Data retrieval
-Acceptance:
-- NL input retrieves real DB data
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## DONE
 
-### TASK‑005: NL → Data retrieval
+### TASK‑005: Base NL → Data retrieval
 Acceptance:
-- NL input retrieves real DB data
+- MCP connection established, basic DB retrieval possible
 
 ### TASK‑004: Setup Neon MCP connection through ai-sdk
 Acceptance:
@@ -86,4 +65,11 @@ Acceptance:
 Acceptance:
 - Skill created in `.claude/skills/ai-sdk-tool-calling`
 - Covers `tool`, `zod` schema, `execute`, `strict` mode
+- Generic "AI Agent" language used
+
+### TASK‑010: Create AI SDK Usage Prompt Skill
+Acceptance:
+- Skill created in `.claude/skills/ai-sdk-usage-prompt`
+- Covers text, system, and message prompts
+- Includes multi-modal content and provider options
 - Generic "AI Agent" language used
