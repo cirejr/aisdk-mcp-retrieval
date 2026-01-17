@@ -1,74 +1,62 @@
 import { ollama } from "ai-sdk-ollama";
 import { streamText, UIMessage, convertToModelMessages, stepCountIs } from "ai";
 import { createNeonMCPClient } from "@/lib/mcp";
-
-export const maxDuration = 60;
+import { createNeonTools } from "@/lib/tools";
 
 export async function POST(req: Request) {
 	const { messages }: { messages: UIMessage[] } = await req.json();
 
 	try {
-		// Initialize Neon MCP client
+		console.log("Creating Neon MCP client...");
 		const mcpClient = await createNeonMCPClient();
+		console.log("Neon MCP client created.");
 
-		// Get tools from MCP server
-		const tools = await mcpClient.tools();
+		// Create tools with proper schemas bound to MCP client
+		const tools = createNeonTools(mcpClient);
+		console.log(`Using ${Object.keys(tools).length} tools: ${Object.keys(tools).join(', ')}`);
 
-		// Get available tool names for system prompt
-		const toolNames = Object.keys(tools).join(", ");
+		const systemPrompt = `You are a database assistant. You MUST use tools to answer questions about databases.
 
-		// Enhanced system prompt for better database interaction
-		const systemPrompt = `You are a helpful AI assistant that can query a database using available tools.
+AVAILABLE TOOLS:
+- listProjects: List all Neon projects. Call this FIRST to get project IDs.
+- getProjectTables: Get tables in a project (requires projectId)
+- runQuery: Execute SQL on a project (requires projectId and query)
+- describeTable: Get table schema (requires projectId and tableName)
 
-Available database tools: ${toolNames}
+WORKFLOW:
+1. ALWAYS call listProjects FIRST to get available projects and their IDs
+2. Use the projectId from step 1 for subsequent tool calls
+3. NEVER ask the user for IDs - find them yourself
 
-When users ask questions about data:
-1. Analyze their question to understand what data they need
-2. Use the appropriate database tool to retrieve the information
-3. Present the results in a clear, structured format
-4. Explain what data was retrieved and provide context
+Example: User asks "show tables in mts-facturation"
+→ Call listProjects → Find mts-facturation → Get its projectId → Call getProjectTables with that projectId`;
 
-Guidelines:
-- Always use tools when users ask for data, reports, or information
-- Be specific about what data you're retrieving
-- Present results in readable tables or lists
-- If no data is found, explain why and suggest alternatives
-- For complex queries, break them into multiple tool calls
-- Always show the tool results clearly to the user
-
-Format your responses:
-- Start with a brief summary of what you found
-- Present the actual data in a structured format
-- Add brief insights or context when relevant
-- Offer to help with follow-up questions`;
-
+		console.log("Starting text stream with Ollama (ministral-3:3b)...");
 		const result = streamText({
-			model: ollama("ministal-3:3b"),
+			model: ollama("ministral-3:3b"),
 			messages: await convertToModelMessages(messages),
 			tools,
 			system: systemPrompt,
-			temperature: 0.3, // Lower temperature for more deterministic tool usage
-			stopWhen: stepCountIs(10), // Allow more multi-step tool calls
-			maxSteps: 10,
+			temperature: 0.1,
+			stopWhen: stepCountIs(5),
 			onFinish: async () => {
-				// Always close MCP client when done
+				console.log("Stream finished.");
 				try {
 					await mcpClient.close();
+					console.log("MCP client closed.");
 				} catch (error) {
 					console.error("Error closing MCP client:", error);
 				}
 			},
 			onError: (error) => {
 				console.error("Stream error:", error);
-				return `Error: ${error.message}`;
 			},
 		});
 
+		console.log("Stream response initiated.");
 		return result.toUIMessageStreamResponse();
 	} catch (error) {
 		console.error("Chat API error:", error);
-
-		// Return error response
 		return new Response(
 			JSON.stringify({
 				error: "Failed to process your request",

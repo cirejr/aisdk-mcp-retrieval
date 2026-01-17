@@ -6,7 +6,7 @@ async function main() {
   console.log('Verifying AI SDK + Ollama connection...');
   try {
     const { text } = await generateText({
-      model: ollama('gemma3:4b'),
+      model: ollama('ministral-3:3b'),
       prompt: 'Say "AI SDK is working" if you can hear me.',
     });
     console.log('Response:', text);
