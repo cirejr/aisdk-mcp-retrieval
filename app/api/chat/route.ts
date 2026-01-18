@@ -5,6 +5,7 @@ import { createNeonTools } from "@/lib/tools";
 
 export async function POST(req: Request) {
 	const { messages }: { messages: UIMessage[] } = await req.json();
+	console.log("Received messages:", JSON.stringify(messages, null, 2));
 
 	try {
 		console.log("Creating Neon MCP client...");
@@ -12,8 +13,8 @@ export async function POST(req: Request) {
 		console.log("Neon MCP client created.");
 
 		// Create tools with proper schemas bound to MCP client
-		const tools = createNeonTools(mcpClient);
-		console.log(`Using ${Object.keys(tools).length} tools: ${Object.keys(tools).join(', ')}`);
+		const tools = mcpClient.tools();
+		console.log("Tools created:", JSON.stringify(tools, null, 2));
 
 		const systemPrompt = `You are a database assistant. You MUST use tools to answer questions about databases.
 
@@ -30,15 +31,13 @@ WORKFLOW:
 
 Example: User asks "show tables in mts-facturation"
 → Call listProjects → Find mts-facturation → Get its projectId → Call getProjectTables with that projectId`;
-
-		console.log("Starting text stream with Ollama (ministral-3:3b)...");
 		const result = streamText({
-			model: ollama("ministral-3:3b"),
+			model: ollama("granite4:3b"),
 			messages: await convertToModelMessages(messages),
 			tools,
 			system: systemPrompt,
 			temperature: 0.1,
-			stopWhen: stepCountIs(5),
+			stopWhen: stepCountIs(10),
 			onFinish: async () => {
 				console.log("Stream finished.");
 				try {
