@@ -18,6 +18,7 @@ export const describeTableTool = {
         console.log(`[describeTable] Calling MCP describe_table_schema for ${tableName}...`);
         try {
             const result = await mcpClient.callTool("describe_table_schema", {
+                name: "describe_table_schema",
                 project_id: projectId,
                 table_name: tableName,
                 database_name: databaseName || "neondb",

@@ -19,9 +19,12 @@ export const runQueryTool = {
         console.log(`[runQuery] Query: ${query.substring(0, 100)}...`);
         try {
             const result = await mcpClient.callTool("run_sql", {
-                project_id: projectId,
-                query: query,
-                database_name: databaseName || "neondb",
+                params: {
+                    name: "run_sql",
+                    project_id: projectId,
+                    query: query,
+                    database_name: databaseName || "neondb",
+                }
             });
             console.log("[runQuery] Success");
             return result;

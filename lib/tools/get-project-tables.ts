@@ -18,9 +18,12 @@ export const getProjectTablesTool = {
         console.log(`[getProjectTables] Calling MCP get_database_tables for project ${projectId}...`);
         try {
             const result = await mcpClient.callTool("get_database_tables", {
-                project_id: projectId,
-                branch_id: branchId || "main",
-                database_name: databaseName || "neondb",
+                params: {
+                    name: "get_database_tables",
+                    project_id: projectId,
+                    branch_id: branchId || "main",
+                    database_name: databaseName || "neondb",
+                }
             });
             console.log("[getProjectTables] Success");
             return result;

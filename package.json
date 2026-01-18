@@ -9,6 +9,7 @@
 		"lint": "bun --bun run lint"
 	},
 	"dependencies": {
+		"@ai-sdk/google": "^3.0.10",
 		"@ai-sdk/mcp": "^1.0.10",
 		"@ai-sdk/react": "^3.0.41",
 		"@modelcontextprotocol/sdk": "^1.25.2",

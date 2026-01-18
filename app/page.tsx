@@ -6,6 +6,8 @@ import {
 	Message,
 	MessageContent,
 	MessageResponse,
+	MessageActions,
+	MessageAction,
 } from "@/components/ai-elements/message";
 import {
 	PromptInput,
@@ -22,80 +24,177 @@ import {
 } from "@/components/ai-elements/tool";
 import { CodeBlock } from "@/components/ai-elements/code-block";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { DatabaseIcon, MessageSquareIcon, SendIcon } from "lucide-react";
+import { DatabaseIcon, MessageSquareIcon, SendIcon, CopyIcon, RefreshCcwIcon } from "lucide-react";
+import {
+	Context,
+	ContextTrigger,
+	ContextContent,
+	ContextContentHeader,
+	ContextContentBody,
+	ContextContentFooter,
+} from "@/components/ai-elements/context";
+import { Conversation, ConversationContent, ConversationEmptyState, ConversationScrollButton } from "@/components/ai-elements/conversation";
+import {
+	Source,
+	Sources,
+	SourcesContent,
+	SourcesTrigger,
+} from "@/components/ai-elements/sources";
+import {
+	Reasoning,
+	ReasoningContent,
+	ReasoningTrigger,
+} from "@/components/ai-elements/reasoning";
 
 export default function Home() {
 	const [input, setInput] = useState("");
-	const { messages, sendMessage, status, stop, error } = useChat({
-		api: "/api/chat",
+	const { messages, sendMessage, status, stop, error, usage } = useChat({
+		body: {
+			// Pass any additional context or configuration needed for MCP
+		},
 	});
 
 	const isLoading = status === "streaming" || status === "submitted";
 
 	return (
 		<div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
-			<main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-4 p-4 pb-24">
-				<div className="flex items-center gap-3 justify-center py-6">
-					<div className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2">
-						<DatabaseIcon className="h-5 w-5 text-primary-foreground" />
-						<h1 className="text-xl font-bold text-primary-foreground">
-							Neon Database Chat
-						</h1>
-					</div>
+			<header className="flex items-center gap-3 justify-center py-6">
+				<div className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2">
+					<DatabaseIcon className="h-5 w-5 text-primary-foreground" />
+					<h1 className="text-xl font-bold text-primary-foreground">
+						Neon Database Chat
+					</h1>
+					{usage && (
+						<Context
+							usedTokens={usage.inputTokens + (usage.outputTokens || 0)}
+							maxTokens={1000000} // Typical model limit
+							usage={usage}
+							modelId="gemini-3-flash-preview"
+						>
+							<ContextTrigger />
+							<ContextContent>
+								<ContextContentHeader />
+								<ContextContentBody>
+									<div className="space-y-2">
+										<p className="text-sm">Model: Gemini 3 Flash Preview</p>
+										<div className="grid grid-cols-2 gap-2 text-sm">
+											<div className="bg-muted p-2 rounded">
+												<p className="text-xs text-muted-foreground">
+													Input Tokens
+												</p>
+												<p>{usage.inputTokens || 0}</p>
+											</div>
+											<div className="bg-muted p-2 rounded">
+												<p className="text-xs text-muted-foreground">
+													Output Tokens
+												</p>
+												<p>{usage.outputTokens || 0}</p>
+											</div>
+										</div>
+									</div>
+								</ContextContentBody>
+								<ContextContentFooter />
+							</ContextContent>
+						</Context>
+					)}
 				</div>
+			</header>
 
-				{error && (
-					<Alert variant="destructive">
-						<AlertTitle>Error</AlertTitle>
-						<AlertDescription>
-							{error.message ||
-								"An error occurred while processing your request."}
-						</AlertDescription>
-					</Alert>
-				)}
+			{error && (
+				<Alert variant="destructive" className="mx-4">
+					<AlertTitle>Error</AlertTitle>
+					<AlertDescription>
+						{error.message ||
+							"An error occurred while processing your request."}
+					</AlertDescription>
+				</Alert>
+			)}
 
-				{/* Messages */}
-				<div className="flex flex-1 flex-col gap-4">
+			<Conversation className="flex-1">
+				<ConversationContent>
 					{messages.length === 0 && (
-						<div className="flex flex-col items-center justify-center py-12 text-center">
-							<MessageSquareIcon className="mb-4 h-12 w-12 text-muted-foreground" />
-							<h2 className="text-lg font-semibold mb-2">
-								Start a conversation
-							</h2>
-							<p className="text-muted-foreground max-w-md">
-								Ask questions about your database in natural language. The AI
-								will query your Neon database and provide structured results.
-							</p>
-						</div>
+						<ConversationEmptyState
+							title="Start a conversation"
+							description="Ask questions about your database in natural language. The AI will query your Neon database and provide structured results."
+							icon={<MessageSquareIcon className="h-12 w-12 text-muted-foreground" />}
+						/>
 					)}
 
 					{messages.map((message) => (
-						<Message key={message.id} from={message.role}>
-							<MessageContent>
-								{message.role === "user" ? (
-									<div>
-										{message.parts.map((part, i) => {
-											if (part.type === "text") {
-												return <p key={i}>{part.text}</p>;
-											}
-											return null;
-										})}
-									</div>
-								) : (
-									<div className="space-y-4">
-										{message.parts.map((part, i) => {
-											if (part.type === "text") {
-												return (
-													<MessageResponse key={i}>{part.text}</MessageResponse>
-												);
-											}
-											if (part.type === "tool-call") {
-												return (
-													<Tool key={i} defaultOpen={false}>
+						<div key={message.id}>
+							{message.role === 'assistant' && message.parts.filter((part) => part.type === 'source-url').length > 0 && (
+								<Sources>
+									<SourcesTrigger
+										count={
+											message.parts.filter(
+												(part) => part.type === 'source-url',
+											).length
+										}
+									/>
+									{message.parts.filter((part) => part.type === 'source-url').map((part, i) => (
+										<SourcesContent key={`${message.id}-source-${i}`}>
+											<Source
+												href={part.url}
+												title={part.url}
+											/>
+										</SourcesContent>
+									))}
+								</Sources>
+							)}
+							{message.parts.map((part, i) => {
+								switch (part.type) {
+									case 'text':
+										return (
+											<Message key={`${message.id}-${i}`} from={message.role}>
+												<MessageContent>
+													<MessageResponse>
+														{part.text}
+													</MessageResponse>
+												</MessageContent>
+												{message.role === 'assistant' && (
+													<MessageActions>
+														<MessageAction
+															onClick={() => {
+																// Regenerate functionality would go here
+																// For now, we'll just copy the text
+																navigator.clipboard.writeText(part.text);
+															}}
+															label="Retry"
+														>
+															<RefreshCcwIcon className="size-3" />
+														</MessageAction>
+														<MessageAction
+															onClick={() =>
+																navigator.clipboard.writeText(part.text)
+															}
+															label="Copy"
+														>
+															<CopyIcon className="size-3" />
+														</MessageAction>
+													</MessageActions>
+												)}
+											</Message>
+										);
+									case 'reasoning':
+										return (
+											<Reasoning
+												key={`${message.id}-reasoning-${i}`}
+												className="w-full"
+												isStreaming={status === 'streaming' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id}
+											>
+												<ReasoningTrigger />
+												<ReasoningContent>{part.text}</ReasoningContent>
+											</Reasoning>
+										);
+									case 'tool-call':
+										return (
+											<Message key={`${message.id}-tool-${i}`} from={message.role}>
+												<MessageContent>
+													<Tool defaultOpen={false}>
 														<ToolHeader
 															title={`Database Query: ${part.toolName}`}
 															type={part.type}
-															state="output-available"
+															state={part.state || "input-available"}
 														/>
 														<ToolInput input={part.args} />
 														{message.parts[i + 1]?.type === "tool-result" && (
@@ -105,15 +204,18 @@ export default function Home() {
 															/>
 														)}
 													</Tool>
-												);
-											}
-											if (part.type === "tool-result") {
-												const toolCallIndex = message.parts.findIndex(
-													(p, idx) => idx < i && p.type === "tool-call",
-												);
-												if (toolCallIndex === -1) {
-													return (
-														<Tool key={i} defaultOpen={true}>
+												</MessageContent>
+											</Message>
+										);
+									case 'tool-result':
+										const toolCallIndex = message.parts.findIndex(
+											(p, idx) => idx < i && p.type === "tool-call",
+										);
+										if (toolCallIndex === -1) {
+											return (
+												<Message key={`${message.id}-tool-result-${i}`} from={message.role}>
+													<MessageContent>
+														<Tool defaultOpen={true}>
 															<ToolHeader
 																title="Database Result"
 																type="tool-result"
@@ -121,16 +223,16 @@ export default function Home() {
 															/>
 															<ToolOutput output={part.result} />
 														</Tool>
-													);
-												}
-												return null;
-											}
-											return null;
-										})}
-									</div>
-								)}
-							</MessageContent>
-						</Message>
+													</MessageContent>
+												</Message>
+											);
+										}
+										return null;
+									default:
+										return null;
+								}
+							})}
+						</div>
 					))}
 
 					{isLoading && messages[messages.length - 1]?.role === "user" && (
@@ -140,11 +242,12 @@ export default function Home() {
 							</MessageContent>
 						</Message>
 					)}
-				</div>
-			</main>
+				</ConversationContent>
+				<ConversationScrollButton />
+			</Conversation>
 
 			{/* Input Area */}
-			<div className="fixed bottom-0 border-t  backdrop-blur-sm dark:border-zinc-800 dark:bg-black/80">
+			<div className="fixed bottom-0 w-full border-t backdrop-blur-sm dark:border-zinc-800 dark:bg-black/80">
 				<div className="mx-auto w-full max-w-4xl p-4">
 					<PromptInput
 						onSubmit={() => {
