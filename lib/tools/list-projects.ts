@@ -11,7 +11,7 @@ export const listProjectsTool = {
     execute: async (_args: Record<string, never>, { mcpClient }: { mcpClient: { callTool: (name: string, args: Record<string, unknown>) => Promise<unknown> } }) => {
         console.log("[listProjects] Calling MCP list_projects...");
         try {
-            const result = await mcpClient.callTool("list_projects", {});
+            const result = await mcpClient.callTool("list_projects", { name: "" });
             console.log("[listProjects] Success");
             return result;
         } catch (error) {

@@ -1,59 +1,89 @@
 import { ollama } from "ai-sdk-ollama";
-import { streamText, UIMessage, convertToModelMessages, stepCountIs } from "ai";
-import { createNeonMCPClient } from "@/lib/mcp";
-import { createNeonTools } from "@/lib/tools";
+import { streamText, convertToModelMessages, stepCountIs, generateText } from "ai";
+import { DatabaseOrchestrator } from "@/lib/orchestrator";
 
 export async function POST(req: Request) {
-	const { messages }: { messages: UIMessage[] } = await req.json();
+	const { messages }: { messages: any[] } = await req.json();
+	const lastMessage = messages[messages.length - 1];
 	console.log("Received messages:", JSON.stringify(messages, null, 2));
 
 	try {
-		console.log("Creating Neon MCP client...");
-		const mcpClient = await createNeonMCPClient();
-		console.log("Neon MCP client created.");
+		const orc = new DatabaseOrchestrator();
 
-		// Create tools with proper schemas bound to MCP client
-		const tools = mcpClient.tools();
-		console.log("Tools created:", JSON.stringify(tools, null, 2));
+		// Step 1: Gather Context
+		console.log("Orchestrator: Gathering context...");
+		const context = await orc.getDatabaseContext(lastMessage.content);
 
-		const systemPrompt = `You are a database assistant. You MUST use tools to answer questions about databases.
+		// If we have a fully resolved project and tables
+		if (context.success && context.data?.stage === "fully_resolved") {
+			console.log("Orchestrator: Context resolved. Generating SQL...");
 
-AVAILABLE TOOLS:
-- listProjects: List all Neon projects. Call this FIRST to get project IDs.
-- getProjectTables: Get tables in a project (requires projectId)
-- runQuery: Execute SQL on a project (requires projectId and query)
-- describeTable: Get table schema (requires projectId and tableName)
+			// Step 2: Generate SQL
+			const { text: sql } = await generateText({
+				model: ollama("qwen2.5-coder:7b"), // Use a stronger model for SQL if available, else granite
+				system: `You are a PostgreSQL expert. 
+Given the following database schema, write a SQL query to answer the user's request.
+Return ONLY the raw SQL query, no markdown formatting, no explanations.
 
-WORKFLOW:
-1. ALWAYS call listProjects FIRST to get available projects and their IDs
-2. Use the projectId from step 1 for subsequent tool calls
-3. NEVER ask the user for IDs - find them yourself
+Schema:
+${context.data.schemas.join("\n\n")}`,
+				prompt: `User Request: "${lastMessage.content}"`
+			});
 
-Example: User asks "show tables in mts-facturation"
-→ Call listProjects → Find mts-facturation → Get its projectId → Call getProjectTables with that projectId`;
+			const cleanerSql = sql.replace(/```sql/g, '').replace(/```/g, '').trim();
+			console.log("Orchestrator: Generated SQL:", cleanerSql);
+
+			// Step 3: Execute SQL
+			console.log("Orchestrator: Executing SQL...");
+			const queryResult = await orc.runQuery(context.data.project.id, cleanerSql);
+
+			// Step 4: Final Response
+			console.log("Orchestrator: Streaming final response...");
+			const result = streamText({
+				model: ollama("granite3.1-dense:8b"),
+				system: "You are a helpful database assistant.",
+				prompt: `User Request: "${lastMessage.content}"
+                
+I have executed the following SQL query:
+${cleanerSql}
+
+The Result is:
+${JSON.stringify(queryResult.data, null, 2)}
+
+Please explain this result to the user in a friendly way.`
+			});
+
+			return result.toUIMessageStreamResponse();
+		}
+
+		// If we found projects but need to clarify
+		if (context.success && context.data?.stage === "projects_listed") {
+			console.log("Orchestrator: projects listed, asking user to clarify.");
+			const result = streamText({
+				model: ollama("granite3.1-dense:8b"),
+				system: "You are a helpful database assistant.",
+				prompt: `The user asked: "${lastMessage.content}".
+I found the following projects:
+${context.data.projects}
+
+The user's request was ambiguous or I couldn't find a matching project. 
+Please list the projects found and ask the user to specify which one they want to query.`
+			});
+			return result.toUIMessageStreamResponse();
+		}
+
+		// Fallback: If orchestrator didn't trigger meaningful action, just chat?
+		// Or maybe context failed.
+		console.log("Orchestrator: Fallback to normal chat.");
+		// We can just stream text with context of failure?
 		const result = streamText({
-			model: ollama("granite4:3b"),
+			model: ollama("granite3.1-dense:8b"),
 			messages: await convertToModelMessages(messages),
-			tools,
-			system: systemPrompt,
-			temperature: 0.1,
-			stopWhen: stepCountIs(10),
-			onFinish: async () => {
-				console.log("Stream finished.");
-				try {
-					await mcpClient.close();
-					console.log("MCP client closed.");
-				} catch (error) {
-					console.error("Error closing MCP client:", error);
-				}
-			},
-			onError: (error) => {
-				console.error("Stream error:", error);
-			},
+			system: "You are a database assistant. I tried to access the database but couldn't understand the intent or connection was failed. Please ask the user for clarification."
 		});
 
-		console.log("Stream response initiated.");
 		return result.toUIMessageStreamResponse();
+
 	} catch (error) {
 		console.error("Chat API error:", error);
 		return new Response(
